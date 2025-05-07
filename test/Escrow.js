@@ -104,4 +104,53 @@ describe("Escrow", () => {
       expect(result).to.equal(true);
     });
   });
+
+  describe("Approval", () => {
+    it("Updates approval status", async () => {
+      let transaction = await escrow.connect(buyer).approveSale(0);
+      await transaction.wait();
+
+      transaction = await escrow.connect(seller).approveSale(0);
+      await transaction.wait();
+
+      transaction = await escrow.connect(lender).approveSale(0);
+      await transaction.wait();
+
+      expect(await escrow.approval(0, buyer.getAddress())).to.equal(true);
+      expect(await escrow.approval(0, seller.getAddress())).to.equal(true);
+      expect(await escrow.approval(0, lender.getAddress())).to.equal(true);
+    });
+  });
+
+  describe("Sale", () => {
+    beforeEach(async () => {
+      let transaction = await escrow.connect(buyer).depositEarnest(0, { value: tokens(5) });
+      await transaction.wait();
+
+      transaction = await escrow.connect(inspector).updateInspectionStatus(0, true);
+      await transaction.wait();
+
+      transaction = await escrow.connect(buyer).approveSale(0);
+      await transaction.wait();
+
+      transaction = await escrow.connect(seller).approveSale(0);
+      await transaction.wait();
+
+      transaction = await escrow.connect(lender).approveSale(0);
+      await transaction.wait();
+
+      await lender.sendTransaction({ to: escrow.getAddress(), value: tokens(5) });
+
+      transaction = await escrow.connect(seller).finalizeSale(0);
+      await transaction.wait();
+    });
+
+    it("Update ownership", async () => {
+      expect(await realEstate.ownerOf(0)).to.equal(buyer.address);
+    });
+
+    it("Updates balance", async () => {
+      expect(await escrow.getBalance()).to.equal(0);
+    });
+  });
 });
